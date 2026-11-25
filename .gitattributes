@@ -1,0 +1,11 @@
+# 统一换行：仓库内一律 LF，Windows 检出时也不转 CRLF（.ps1/.cjs 混用时不至于整文件翻新）
+* text=auto eol=lf
+
+# 二进制/归档不进文本处理
+*.vsix binary
+*.7z   binary
+*.exe  binary
+*.dll  binary
+*.node binary
+*.png  binary
+*.jpg  binary

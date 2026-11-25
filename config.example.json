@@ -1,0 +1,83 @@
+{
+  "panel_password": "CHANGE_ME",
+  "api_key": "CHANGE_ME",
+  "workspace_folder": "",                 // 上游项目锚点；建议指向一个专用空目录（网关启动会自动创建）
+  "workspace_check": "warn",              // error=声明目录不存在就 400；warn=放行+响应头+日志；off=不校验（代码默认 error）
+  "workspace_check_writable": false,      // true 时还要求该目录可写
+  "workspace_declare_scope": "all",       // 声明识别范围：all=system+user；system=只认 system
+  "workspace_notice": true,               // 提示词里声明「网关目录无效、以调用方声明为准」
+  "workspace_notice_tail": true,          // 末尾软性提醒「记得用正确的工作区目录」
+  "agent_type": "builder",                // 上游 agent 类型；代码默认 chat，重任务建议 builder
+  "default_agent_type": "builder",        // 优先级高于 agent_type
+  "creds_auto_renew_hours": 24,           // 凭据自动续期间隔，0=关闭
+  "native_ban": true,                     // 禁用上游原生工具（Read/Grep/WebSearch…），只走提示词层 CALL 协议
+  "tool_schema_depth": 3,                 // 工具参数 schema 展开深度
+  "tool_block_budget": 24000,             // 工具说明注入的字符预算；超了自动降级
+  "instruction_style": "aligned",         // aligned（默认）| legacy（老措辞，不含【通道事实】段）
+  "undeclared_tool_mode": "feedback",    // 模型调了未声明的工具名：feedback（回灌让它改，默认）| strip（丢弃）| passthrough（旧行为）
+  "undeclared_tool_retries": 1,           // 回灌次数上限（0 = 等同 strip）
+  "tool_aliases": {},                     // 模型自造名 → 已声明名，例 {"写文件":"write_file"}
+  "model_aliases": {},                    // 自定义名 → 真实 slug，例 {"seed-2.1-turbo":"Doubao-Seed-2.0-Code"}
+  "model_strict": true,                   // 未知模型名直接 404（防上游静默顶替）；false=放行
+  "image_passthrough": true,              // 图片落盘并把路径告知模型（远程 URL 拒内网地址）
+  "default_model": "",                    // 请求未带 model 时用哪个；空=取目录第一个
+
+  "context_window_override": {            // 上下文窗口（上游一律标 116000，实测 1,048,576）
+    "DeepSeek-V4-Pro": 1048576,
+    "DeepSeek-V4-Flash": 1048576,
+    "qwen-3.6-plus": 1048576,
+    "Doubao-Seed-Code": 262144,
+    "Doubao-Seed-2.0-Code": 262144,
+    "glm-5": 204800,
+    "glm-5.1": 204800,
+    "glm-5v-turbo": 204800,
+    "kimi-k2.6": 256144,
+    "minimax-m2.5": 204800,
+    "minimax-m2.7": 204800
+  },
+  "prompt_max_tokens_override": {         // 输入预算（上游一律 100000）
+    "DeepSeek-V4-Pro": 1048576,
+    "DeepSeek-V4-Flash": 1048576,
+    "qwen-3.6-plus": 1048576,
+    "Doubao-Seed-Code": 262144,
+    "Doubao-Seed-2.0-Code": 262144,
+    "glm-5": 204800,
+    "glm-5.1": 204800,
+    "glm-5v-turbo": 204800,
+    "kimi-k2.6": 256144,
+    "minimax-m2.5": 204800,
+    "minimax-m2.7": 204800
+  },
+  "max_tokens_override": {                // 输出上限（上游一律 16000）；同时决定 length 截断判定
+    "DeepSeek-V4-Pro": 131072
+  },
+  "max_tokens_note": {                    // 随 /v1/models 下发的备注（可选）
+    "DeepSeek-V4-Pro": "官方标称 MAX OUTPUT 384K（含思维链）；此处按已验证可达的 128K 标注，实测可能更高"
+  },
+  "model_max_tokens": 16000,              // 兜底输出上限（目录里查不到该模型时用）
+
+  "idle_timeout_ms": 600000,              // 空闲看门狗：连续这么久无任何上游事件才断开（生产建议 240000）
+  "stream_keepalive_ms": 20000,           // 静默时发 delta:{} 空帧，重置客户端空闲看门狗（SSE 注释不算 chunk）
+  "rate_limit_per_min": 0,                // 每个 key（Bearer 或客户端 IP）每分钟最多多少个 /v1/chat/completions；0=不限
+  "max_concurrent": 0,                    // 全局同时在飞上限；0=不限（账号池实际并发约 3.3，生产建议 6~10）
+  "reasoning_abort_chars": 0,             // 思考超该字符数且无正文 → 掐断重试一次；0=关闭
+  "reasoning_context": "all",             // 历史思考回填：off | last | all
+  "reasoning_context_max_chars": 0,       // 单轮思考回填上限，0=不限
+  "reasoning_context_total_max_chars": 0, // 思考回填总量上限，0=不限
+  "warmup_chat": true,                    // 启动后跑一次极小 chat 预热（TRAE2API_WARMUP=0 关闭）
+
+  "runtime_heal": true,                   // 运行时挂死自动自愈总开关
+  "runtime_heal_threshold": 2,            // 失败权重和达此值触发（真实对话超时权重 2、探测权重 1）
+  "runtime_heal_window_sec": 300,         // 失败计数窗口
+  "runtime_heal_cooldown_sec": 120,       // 两次自愈最小间隔
+  "runtime_probe_sec": 15,                // 空闲期存活探测间隔
+  "runtime_probe_timeout_ms": 10000,      // 探测超时
+  "runtime_probe_grace_sec": 120,         // 启动/重启后的宽限期（期间不计失败）
+  "runtime_restart_wait_sec": 90,         // 重启后等待重连的最长时间
+  "runtime_warmup_after_restart": true,   // 重启后自动预热
+
+  "icube_language": "en",                 // ↓ 以下由网关自动维护，别手改
+  "version_code": 1007016,
+  "plugin_channel": "vscode",
+  "device_id": ""
+}

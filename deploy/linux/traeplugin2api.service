@@ -1,0 +1,33 @@
+# traeplugin2api systemd 单元模板 —— 由 deploy/linux/install-systemd.sh 渲染后安装
+# 占位符：@USER@ @DIR@ @NODE@ @AHA_DIR@ @PORT@
+# 注意：尚未在真机 Linux 上验证（见 docs/LINUX.md 第 3 节 A/B），首次安装后请检查
+#       journalctl -u traeplugin2api -f 与 <DIR>/data/trae2api.log
+[Unit]
+Description=traeplugin2api - Trae/MarsCode 客户端通道 → OpenAI 兼容网关
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@DIR@
+# 目录自适应由启动脚本负责；这里只给运行必需的变量
+Environment=HOME=@HOME@
+Environment=NODE_ENV=production
+Environment=PORT=@PORT@
+Environment=TRAE2API_ROOT=@ROOT@
+Environment=TRAE2API_AHA_DIR=@AHA_DIR@
+Environment=TRAE2API_AHA_PREFIX=vscode_ai_agent_
+Environment=TRAE2API_AGENT_PREF=extension
+ExecStart=@NODE@ @DIR@/server.cjs
+# 崩了 5 秒后自动重启；连续重启 5 次进入 failed，避免刷日志
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+# 关停时先把在途流式响应收尾（server.cjs 处理 SIGTERM）
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

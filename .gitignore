@@ -1,0 +1,37 @@
+# 运行数据 / 本机状态（不入库）
+data/
+deploy.json
+runtime/
+runtime-root/
+.workspace/
+*.log
+*.bak
+*.bak-*
+.tmp-*
+node_modules/
+
+# 第三方安装包：VSIX 由使用者自行下载，仓库不放
+*.vsix
+*.7z
+*.exe
+*.dll
+*.node
+
+# 证书与私钥
+*.key
+*.pem
+*.crt
+*.cer
+*.srl
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store
+
+# 自带浏览器内核（deploy/fetch-browser.cjs 下载，约 230 MB/平台，绝不入库）
+browser/
+**/chrome-headless-shell
+**/chrome-headless-shell.exe
+# 登录用的一次性/持久浏览器配置（含会话 cookie）
+login-profile/
