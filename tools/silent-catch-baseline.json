@@ -1,0 +1,74 @@
+{
+  "files": {
+    "deploy/fetch-browser.cjs": {
+      "empty": 6,
+      "unmarked": 6
+    },
+    "deploy/install-from-vsix.cjs": {
+      "empty": 4,
+      "unmarked": 4
+    },
+    "deploy/warm-runtime.cjs": {
+      "empty": 3,
+      "unmarked": 3
+    },
+    "deploy/watch-runtime.cjs": {
+      "empty": 3,
+      "unmarked": 3
+    },
+    "lib/aha.cjs": {
+      "empty": 18,
+      "unmarked": 18
+    },
+    "lib/aiserver-client.cjs": {
+      "empty": 2,
+      "unmarked": 2
+    },
+    "lib/attachments.cjs": {
+      "empty": 3,
+      "unmarked": 3
+    },
+    "lib/call-parse.cjs": {
+      "empty": 1,
+      "unmarked": 1
+    },
+    "lib/cdp.cjs": {
+      "empty": 12,
+      "unmarked": 12
+    },
+    "lib/creds.cjs": {
+      "empty": 13,
+      "unmarked": 13
+    },
+    "lib/trae-login.cjs": {
+      "empty": 12,
+      "unmarked": 12
+    },
+    "lib/trae.cjs": {
+      "empty": 2,
+      "unmarked": 2
+    },
+    "server.cjs": {
+      "empty": 19,
+      "unmarked": 19
+    },
+    "test-creds-acl.cjs": {
+      "empty": 1,
+      "unmarked": 1
+    },
+    "test-health-drop.cjs": {
+      "empty": 1,
+      "unmarked": 1
+    },
+    "test-prompt-template.cjs": {
+      "empty": 1,
+      "unmarked": 1
+    },
+    "tools/verify-docs.cjs": {
+      "empty": 2,
+      "unmarked": 2
+    }
+  },
+  "total": 103,
+  "unmarkedTotal": 103
+}

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>trae2api · Trae 通道 OpenAI 兼容网关</title>
+<style>
+  :root {
+    --bg:#0e1016; --card:#171b24; --card2:#1c212c; --line:#252b38;
+    --fg:#e6e9f0; --muted:#8b93a7; --acc:#5b8cff; --ok:#3ecf8e; --warn:#f5a524; --err:#ff6b6b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:22px; background:radial-gradient(1200px 600px at 15% -10%, #1b2233 0%, var(--bg) 55%);
+         color:var(--fg); font:14px/1.55 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; }
+  header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .brand { font-size:19px; font-weight:700; letter-spacing:.3px; }
+  .brand b { color:var(--acc); font-weight:700; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+  .dot { width:8px; height:8px; border-radius:50%; background:#3a4256; display:inline-block; margin-right:6px; vertical-align:middle; }
+  .dot.on { background:var(--ok); box-shadow:0 0 8px rgba(62,207,142,.7); }
+  .dot.warn { background:var(--warn); }
+  .spacer { flex:1; }
+  button { font:inherit; color:var(--fg); background:var(--card2); border:1px solid var(--line); border-radius:8px; padding:7px 12px; cursor:pointer; }
+  button:hover { border-color:#3a4457; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  button.small { padding:4px 9px; font-size:12px; }
+  nav.tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; border-bottom:1px solid var(--line); }
+  nav.tabs button { border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:var(--muted); padding:9px 14px; }
+  nav.tabs button.active { color:var(--fg); border-bottom-color:var(--acc); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .card h2 { margin:0 0 12px; font-size:14px; color:var(--muted); font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+  .kv { display:grid; grid-template-columns:120px 1fr; gap:6px 12px; font-size:13px; }
+  .kv dt, .kv .k { color:var(--muted); }
+  .kv .v { word-break:break-all; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.5px; }
+  .stat { display:flex; gap:22px; flex-wrap:wrap; }
+  .stat > div { min-width:84px; }
+  .stat b { display:block; font-size:21px; font-weight:700; letter-spacing:.3px; }
+  .stat span { font-size:11.5px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
+  td.wrap { white-space:normal; word-break:break-all; }
+  tbody tr:hover { background:rgba(91,140,255,.06); }
+  .hint { color:var(--muted); font-size:12px; }
+  .ep { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#0f131b; border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:12px; }
+  .pill { display:inline-block; font-size:11px; padding:1px 7px; border-radius:999px; border:1px solid var(--line); }
+  .pill.ok { color:var(--ok); border-color:rgba(62,207,142,.4); }
+  .pill.err { color:var(--err); border-color:rgba(255,107,107,.4); }
+  .pill.warn { color:var(--warn); border-color:rgba(245,165,36,.4); }
+  textarea, input, select { width:100%; font:inherit; color:var(--fg); background:#0f131b; border:1px solid var(--line); border-radius:8px; padding:9px 11px; }
+  textarea { min-height:84px; resize:vertical; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .out { margin-top:12px; background:#0f131b; border:1px solid var(--line); border-radius:10px; padding:12px 14px; min-height:90px; }
+  .think { color:var(--muted); font-size:12.5px; white-space:pre-wrap; border-left:2px solid #2a3242; padding-left:10px; margin-bottom:10px; }
+  .content { white-space:pre-wrap; }
+  .meta { margin-top:8px; color:var(--muted); font-size:12px; }
+  details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+  pre.logs { margin:10px 0 0; max-height:340px; overflow:auto; font-size:12px; line-height:1.5; color:#b9c1d4; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+  .field .hint { margin-top:4px; }
+  @media (max-width:700px) { .kv { grid-template-columns:100px 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">trae<span>2api</span></span>
+  <span class="badge" id="ver">v—</span>
+  <span class="badge"><span class="dot" id="dot-ipc"></span>IPC</span>
+  <span class="badge"><span class="dot" id="dot-cred"></span>凭据</span>
+  <span class="badge" id="portBadge">:—</span>
+  <span class="badge" id="backendBadge" title="运行模式：自包含运行时（由 VSIX 解出，不需要 VS Code）">自包含运行时</span>
+  <span class="spacer"></span>
+  <button class="small" id="btnRefresh">刷新状态</button>
+  <button class="small" id="btnModels">刷新模型目录</button>
+  <button class="small" id="btnLogout">退出登录</button>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="overview">总览</button>
+  <button class="tab" data-tab="accounts">凭据</button>
+  <button class="tab" data-tab="requests">请求日志</button>
+  <button class="tab" data-tab="errors">错误汇总</button>
+  <button class="tab" data-tab="settings">设置</button>
+</nav>
+
+<!-- ============ 总览 ============ -->
+<section id="tab-overview" class="tab-panel active">
+  <div class="grid">
+    <div class="card">
+      <h2>凭据（桌面 VS Code SecretStorage）</h2>
+      <div class="kv">
+        <span class="k">账号</span><span class="v" id="c-id">—</span>
+        <span class="k">JWT 到期</span><span class="v" id="c-jwt">—</span>
+        <span class="k">refresh 到期</span><span class="v" id="c-fresh">—</span>
+        <span class="k">上次续期</span><span class="v" id="c-last">—</span>
+      <span class="k">自动续期</span><span class="v" id="c-auto">—</span>
+        <span class="k">IPC 套接字</span><span class="v" id="c-sock">—</span>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="primary small" id="btnRenew">立即续期</button>
+        <span class="hint" id="c-hint"></span>
+      </div>
+      <div class="hint" style="margin-top:10px">续期会回写 SecretStorage，桌面端与网关共用同一 refresh token（不轮换，互不影响）。</div>
+    </div>
+
+    <div class="card">
+      <h2>运行统计</h2>
+      <div class="stat">
+        <div><b id="s-req">0</b><span>请求</span></div>
+        <div><b id="s-ok">0</b><span>成功</span></div>
+        <div><b id="s-fail">0</b><span>失败</span></div>
+        <div><b id="s-pt">0</b><span>prompt tokens</span></div>
+        <div><b id="s-ct">0</b><span>completion tokens</span></div>
+        <div><b id="s-cache">—</b><span>缓存命中率</span></div>
+      </div>
+      <div class="hint" style="margin-top:12px">
+        端点：<span class="ep">POST /v1/chat/completions</span> · <span class="ep">GET /v1/models</span> · <span class="ep">GET /healthz</span>
+      </div>
+      <div class="hint" id="s-err"></div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1">
+      <h2>工具桥（提示词层 CALL 协议）</h2>
+      <div class="stat">
+        <div><b id="t-mode">—</b><span>最近工具块档位</span></div>
+        <div><b id="t-chars">0</b><span>工具块字符</span></div>
+        <div><b id="t-tools">0</b><span>工具数</span></div>
+        <div><b id="t-calls">0</b><span>累计 tool_calls</span></div>
+        <div><b id="t-retry">0</b><span>纠偏重试</span></div>
+        <div><b id="t-miss">0</b><span>漏调</span></div>
+      </div>
+      <div class="hint" style="margin-top:12px" id="t-cfg"></div>
+      <div class="hint" style="margin-top:6px">
+        档位：<span class="ep">full</span> 完整 JSON Schema → <span class="ep">signature</span> name:type*[enum]{nested}（depth 3）
+        → <span class="ep">signature-desc40</span> → <span class="ep">signature-nodesc</span> → <span class="ep">names-only</span>；
+        并行上限 4 个；参数里 <span class="ep">[a|b|c]</span> 是枚举封闭集。
+      </div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1">
+      <h2>模型（实时目录）</h2>
+      <div style="overflow-x:auto">
+      <table id="models"><thead><tr><th>名称</th><th>显示名</th><th>类型</th><th>上下文（输入）</th><th>输出上限</th><th>多模态</th><th>备注</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="hint" id="modelHint" style="margin-top:8px"></div>
+      <div class="hint" style="margin-top:6px">
+        「上下文（输入）」= <span class="ep">context_window</span>（同时下发 <span class="ep">context_length</span>、
+        <span class="ep">max_input_tokens</span>、<span class="ep">prompt_max_tokens</span>、<span class="ep">limit.context</span>）；
+        「输出上限」= <span class="ep">max_tokens</span>（同时下发 <span class="ep">max_output_tokens</span>、<span class="ep">limit.output</span>）。
+        客户端点「获取可用模型」时直接读这些值，不再是上游那个 116K。要改请编辑 <span class="ep">data/config.json</span> 的
+        <span class="ep">context_window_override</span> / <span class="ep">max_tokens_override</span> /
+        <span class="ep">prompt_max_tokens_override</span> / <span class="ep">max_tokens_note</span>，然后重启网关。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>接入信息</h2>
+      <div class="kv">
+        <span class="k">面板</span><span class="v" id="i-panel">—</span>
+        <span class="k">OpenAI baseURL</span><span class="v" id="i-base">—</span>
+        <span class="k">鉴权</span><span class="v" id="i-auth">—</span>
+        <span class="k">工作区</span><span class="v" id="i-ws">—</span>
+      </div>
+      <div class="hint" style="margin-top:12px">示例：</div>
+      <div class="hint"><span class="ep">curl -s $BASE/v1/chat/completions -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' -d '{"model":"qwen-3.6-plus","messages":[{"role":"user","content":"hi"}]}'</span></div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1">
+      <h2>试聊（走 lite/chat 通道，实时流式）</h2>
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:0 0 260px"><select id="model"></select><div class="hint" id="modelHint2"></div></div>
+        <div style="flex:1; min-width:260px">
+          <textarea id="prompt" placeholder="输入内容，Ctrl/⌘+Enter 发送">用一句中文回答：1+1 等于几？</textarea>
+          <div class="row" style="margin-top:10px">
+            <button class="primary" id="btnSend">发送</button>
+            <button id="btnClear">清空输出</button>
+            <span class="hint" id="sendHint"></span>
+          </div>
+        </div>
+      </div>
+      <div class="out" id="out">
+        <div class="think" id="think" hidden></div>
+        <div class="content" id="content" style="color:var(--muted)">等待提问…</div>
+      </div>
+      <div class="meta" id="meta"></div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1">
+      <details><summary>运行日志（最近 200 行）</summary><pre class="logs" id="logs"></pre></details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 凭据 ============ -->
+<section id="tab-accounts" class="tab-panel">
+  <div class="grid">
+    <div class="card">
+      <h2>SecretStorage 凭据</h2>
+      <table id="cred-table"><thead><tr><th>项</th><th>值</th></tr></thead><tbody></tbody></table>
+      <div class="row" style="margin-top:12px"><button class="primary small" id="btnRenew2">立即续期</button><span class="hint" id="renewHint"></span></div>
+    </div>
+    <div class="card">
+      <h2>登录 Trae 账号（网关内打开正常登录页）</h2>
+      <div class="hint" style="margin-bottom:10px">点「开始登录」后会在网关里打开 Trae 的真实登录页（下方实时显示），可以直接填手机号+验证码，也可以扫码；成功后凭据写入运行时 profile。</div>
+      <div class="row" style="margin-bottom:12px">
+        <button class="primary small" id="btnTraeLogin">开始登录</button>
+        <button class="small" id="btnTraeLoginCancel">取消</button>
+        <span class="hint" id="traeLoginHint"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start">
+        <div>
+          <div class="row" style="margin-bottom:8px">
+            <input id="traePhone" placeholder="手机号（如 13800000000）" inputmode="numeric"
+                   style="flex:1;min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid #252b38;background:#0f131b;color:#e6e9f0" />
+            <button class="small" id="btnTraePhone">发送验证码</button>
+          </div>
+          <div class="row" style="margin-bottom:8px">
+            <input id="traeCode" placeholder="短信验证码" inputmode="numeric"
+                   style="flex:1;min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid #252b38;background:#0f131b;color:#e6e9f0" />
+            <button class="primary small" id="btnTraeCode">登录</button>
+          </div>
+          <div class="hint" id="traeActionHint" style="min-height:18px"></div>
+          <div class="hint" style="margin-top:6px;color:#8b93a7">提示：登录页默认显示扫码；也可以在上方填手机号走短信验证码登录。</div>
+        </div>
+        <div style="text-align:center">
+          <img id="traeLoginScreen" alt="登录页画面" style="width:260px;border:1px solid #252b38;border-radius:8px;background:#0b0e14;min-height:160px" />
+          <div class="hint" style="margin-top:6px">登录页实时画面</div>
+        </div>
+      </div>
+      <div id="traeLoginQrWrap" style="display:none;text-align:center">
+        <img id="traeLoginQr" alt="登录二维码" style="width:220px;height:220px;image-rendering:pixelated;border-radius:8px;background:#fff;padding:6px" />
+        <div class="hint" style="margin-top:8px">打开豆包 / 飞书 App → 扫一扫</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>本地缓存与链路</h2>
+      <table id="cache-table"><thead><tr><th>项</th><th>值</th></tr></thead><tbody></tbody></table>
+      <div class="hint" style="margin-top:10px">
+        <span class="ep">safekey.bin</span> 缓存 DPAPI 解出的 safeStorage 密钥，避免热路径反复调用 DPAPI；
+        <b>没装 VS Code 扩展的自包含部署下它永远缺失，属正常</b>（这条路径根本不会被走到）。
+        <span class="ep">token-cache.json</span> 才是关键：面板内登录成功后应立即变「就绪」，
+        SecretStorage 读不到时靠它续期。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 请求日志 ============ -->
+<section id="tab-requests" class="tab-panel">
+  <div class="card">
+    <div class="row" style="margin-bottom:12px">
+      <h2 style="margin:0">请求日志</h2>
+      <span class="spacer"></span>
+      <select id="reqLimit" style="width:auto"><option value="50">最近 50 条</option><option value="100" selected>最近 100 条</option><option value="500">最近 500 条</option></select>
+      <select id="reqStatus" style="width:auto"><option value="">全部</option><option value="tool">仅工具调用</option><option value="error">仅失败</option></select>
+      <button class="small" id="btnReqRefresh">刷新</button>
+    </div>
+    <div style="max-height:60vh; overflow:auto">
+      <table id="journal"><thead><tr>
+        <th>时间</th><th>模型</th><th>形态</th><th>工具</th><th>工具块</th><th>tokens</th><th>耗时</th><th>结果</th><th>调用</th><th>未声明</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="hint" id="reqHint" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<!-- ============ 错误汇总 ============ -->
+<section id="tab-errors" class="tab-panel">
+  <div class="grid">
+    <div class="card" style="grid-column:1/-1">
+      <h2>异常信号（工具桥）</h2>
+      <div class="stat">
+        <div><b id="e-miss">0</b><span>漏调（要求调用却没解析到 CALL）</span></div>
+        <div><b id="e-retry">0</b><span>纠偏重试</span></div>
+        <div><b id="e-calls">0</b><span>工具调用总数</span></div>
+        <div><b id="e-rate">—</b><span>失败率</span></div>
+      </div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <h2>错误聚合</h2>
+      <table id="errors"><thead><tr><th>等级</th><th>次数</th><th>类型</th><th>最近时间</th><th>最近模型</th><th>样例</th></tr></thead><tbody></tbody></table>
+      <div class="hint" id="errHint" style="margin-top:8px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 设置 ============ -->
+<section id="tab-settings" class="tab-panel">
+  <div class="grid">
+    <div class="card">
+      <h2>工具桥参数</h2>
+      <div class="field">
+        <label>原生工具禁令（禁止模型用自带的 Read/Grep/WebSearch…）</label>
+        <select id="set-ban"><option value="true">开启（推荐）</option><option value="false">关闭</option></select>
+        <div class="hint">关闭后模型可能自己去读文件/搜代码，调用方拿不到 tool_calls。</div>
+      </div>
+      <div class="field">
+        <label>schema 压缩深度（0-6）</label>
+        <input id="set-depth" type="number" min="0" max="6" step="1">
+        <div class="hint">3 可显示四层嵌套叶子；2 只到三层；0 等于只给顶层字段名。</div>
+      </div>
+      <div class="field">
+        <label>工具块预算（字符）</label>
+        <input id="set-budget" type="number" min="500" max="200000" step="500">
+        <div class="hint">超过预算就从完整 JSON 降级到压缩签名（逐级：描述 80 → 40 → 无描述 → 只留名字）。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>模型与通道</h2>
+      <div class="field">
+        <label>默认模型</label>
+        <select id="set-model"></select>
+        <div class="hint">请求未带 model 时使用。</div>
+      </div>
+      <div class="field">
+        <label>agent 模式</label>
+        <select id="set-agent">
+          <option value="chat">chat（只读，推荐）</option>
+          <option value="builder">builder（会挂写文件/终端工具，执行命令会挂死）</option>
+          <option value="builder_with_mcp">builder_with_mcp（实测与 builder 一致）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>图片透传（OpenAI image_url → 落盘 → 交给 agent 读图）</label>
+        <select id="set-image">
+          <option value="true">开启（推荐）</option>
+          <option value="false">关闭（图片会被忽略）</option>
+        </select>
+        <div class="hint">开启后图片落到 <span class="ep">data/attachments/</span>（24 小时自动清理），模型靠自带读图能力识别。</div>
+      </div>
+
+      </div>
+      <div class="field">
+        <label>工作区目录（写入 Trae 请求的 workspace_folder）</label>
+        <input id="set-ws" type="text">
+        <div class="hint">改这里不会自动重建 local_project_id；换目录后如报 Project not found，请把 local_project_id 清空后重启。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>访问口令</h2>
+      <div class="field">
+        <label>新口令（留空表示不改；同时作为 /v1 的 Bearer key）</label>
+        <input id="set-pwd" type="password" autocomplete="new-password" placeholder="至少 4 位">
+        <div class="hint">保存后当前会话仍有效；其它已登录设备需要重新登录。</div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" id="btnSave">保存设置</button>
+        <span class="hint" id="saveHint"></span>
+      </div>
+      <div class="hint" style="margin-top:10px">设置保存即生效（写回 <span class="ep">data/config.json</span>，旧文件备份为 <span class="ep">config.json.bak</span>）。</div>
+    </div>
+  </div>
+</section>
+
+<script>
+// 会话过期/未登录时，任何 API 401 都跳登录页，并记住当前地址
+(function () {
+  const _origFetch = window.fetch;
+  window.fetch = async function (...args) {
+    const r = await _origFetch.apply(this, args);
+    if (r.status === 401) {
+      const next = location.pathname + location.search;
+      location.href = '/login?next=' + encodeURIComponent(next);
+      throw new Error('unauthorized');
+    }
+    return r;
+  };
+})();
+</script>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (ms) => (!ms ? '—' : new Date(ms).toLocaleString('zh-CN'));
+const num = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US'));
+
+// 所有来自服务端/上游的文本在拼进 innerHTML 前必须过这里（防存储型 XSS：
+// 模型名、报错内容、调用方传入的 model 都是不可信输入）
+const esc = (v) => String(v == null ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+async function getJSON(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status === 401) { location.href = '/login'; return { error: '未登录' }; }
+  const t = await r.text();
+  try { return JSON.parse(t); } catch { return { error: t }; }
+}
+
+// ---------- 标签页 ----------
+for (const btn of document.querySelectorAll('nav.tabs .tab')) {
+  btn.addEventListener('click', () => {
+    for (const b of document.querySelectorAll('nav.tabs .tab')) b.classList.toggle('active', b === btn);
+    for (const s of document.querySelectorAll('.tab-panel')) s.classList.toggle('active', s.id === 'tab-' + btn.dataset.tab);
+    if (btn.dataset.tab === 'requests') refreshRequests();
+    if (btn.dataset.tab === 'errors') refreshErrors();
+    if (btn.dataset.tab === 'settings') loadSettings();
+    if (btn.dataset.tab === 'accounts') renderCredentials();
+  });
+}
+
+function setDot(el, on, warn) { el.className = 'dot' + (on ? ' on' : '') + (!on && warn ? ' warn' : ''); }
+
+// ---------- 总览 ----------
+let STATUS = null;
+async function refreshStatus() {
+  const s = await getJSON('/api/status');
+  if (s.error) { $('c-hint').textContent = '状态获取失败: ' + s.error; return; }
+  STATUS = s;
+  $('ver').textContent = 'v' + s.version;
+  $('portBadge').textContent = ':' + s.port;
+  // 只有一种运行模式（自包含运行时）
+  if ($('backendBadge')) $('backendBadge').textContent = '自包含运行时';
+  setDot($('dot-ipc'), !!s.connected);
+  setDot($('dot-cred'), !!s.creds?.hasCreds);
+  $('c-id').textContent = s.creds?.identity ? `${s.creds.identity.name}（uid ${s.creds.identity.uid}）` : '—';
+  $('c-jwt').textContent = fmt(s.creds?.jwtExp);
+  $('c-fresh').textContent = fmt(s.creds?.freshExp);
+  $('c-last').textContent = s.creds?.lastRefreshAt ? fmt(s.creds.lastRefreshAt) : '未续期（使用现有 token）';
+  if ($('c-auto')) {
+    const h = Number(s.creds?.autoRenewHours || 0);
+    const c = Number(s.creds?.renewCount || 0);
+    const nx = Number(s.creds?.nextRenewAt || 0);
+    $('c-auto').textContent = h > 0
+      ? ('每 ' + h + ' 小时自动续期 · 已自动续 ' + c + ' 次' + (nx ? ' · 下次 ' + fmt(nx) : ''))
+      : '自动续期未开启';
+  }
+  $('c-sock').textContent = s.socket ? s.socket.replace('ipc://', '') : '未连接';
+  $('s-req').textContent = num(s.stats.requests);
+  $('s-ok').textContent = num(s.stats.ok);
+  $('s-fail').textContent = num(s.stats.fail);
+  $('s-pt').textContent = num(s.stats.promptTokens);
+  $('s-ct').textContent = num(s.stats.completionTokens);
+  const hr = Number(s.stats.cacheHitRate || 0);
+  $('s-cache').textContent = s.stats.promptTokens ? (hr * 100).toFixed(1) + '%' : '—';
+  $('s-cache').title = '命中 ' + num(s.stats.cachedTokens || 0) + ' / 输入 ' + num(s.stats.promptTokens || 0) + ' tokens';
+  $('s-err').textContent = s.stats.lastError ? '最近错误: ' + s.stats.lastError : '';
+
+  const tb = s.stats.lastToolBlock;
+  $('t-mode').textContent = tb ? tb.mode : '—';
+  $('t-chars').textContent = tb ? num(tb.chars) : '0';
+  $('t-tools').textContent = tb ? num(tb.toolCount) : '0';
+  $('t-calls').textContent = num(s.stats.toolCalls || 0);
+  $('t-retry').textContent = num(s.stats.toolRetries || 0);
+  $('t-miss').textContent = num(s.stats.toolMisses || 0);
+  const cfg = s.config || {};
+  $('t-cfg').textContent = `原生工具禁令 ${cfg.native_ban === false ? '关闭' : '开启'} · schema 深度 ${cfg.tool_schema_depth ?? 3} · 工具块预算 ${cfg.tool_block_budget ?? 12000} 字符 · agent ${cfg.agent_type || 'chat'}`;
+
+  // 模型表
+  const tbModels = $('models').querySelector('tbody');
+  tbModels.innerHTML = '';
+  // 容量简写：1048576 → 1M、131072 → 128K、262144 → 256K、16000 → 16K、256144 → 250.1K；
+  // 完整 token 数放 title，避免窄表格被撑爆
+  const capText = (n) => {
+    if (typeof n !== 'number' || !isFinite(n) || n <= 0) return '—';
+    if (n % 1048576 === 0) return `${n / 1048576}M`;
+    if (n > 1048576) return `${(n / 1048576).toFixed(1)}M`;
+    if (n % 1024 === 0) return `${n / 1024}K`;
+    if (n % 1000 === 0) return `${n / 1000}K`;
+    return `${(n / 1024).toFixed(1)}K`;
+  };
+  const capCell = (n) => `<td title="${typeof n === 'number' ? n.toLocaleString('en-US') : ''}">${esc(capText(n))}</td>`;
+  for (const m of s.models || []) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${esc(m.name)}</td><td>${esc(m.display_name)}</td><td>${esc(m.model_type)}</td>`
+      + capCell(m.context_window) + capCell(m.max_tokens)
+      + `<td>${m.multimodal ? '✓' : ''}</td><td class="wrap hint" style="max-width:320px">${esc(m.max_tokens_note || '')}</td>`
+      + `<td>${m.is_default ? '<span class="pill ok">默认</span>' : ''}</td>`;
+    tbModels.appendChild(tr);
+  }
+  if (s.modelsError) $('modelHint').textContent = '模型列表获取失败: ' + s.modelsError;
+  else $('modelHint').textContent = `${(s.models || []).length} 个模型（鼠标悬停容量可看完整 token 数）`;
+
+  // 接入信息
+  const host = location.host;
+  $('i-panel').textContent = location.origin + '/';
+  $('i-base').textContent = location.origin + '/v1';
+  $('i-auth').textContent = (s.config?.has_password === false) ? '未设置口令（裸奔）' : '面板口令登录 / v1 用 Bearer；本机回环免密';
+  $('i-ws').textContent = s.config?.workspace_folder || '—';
+
+  // 模型下拉（试聊 + 设置）
+  const sel = $('model'); const prev = sel.value || (s.config?.default_model || 'Doubao-Seed-Code');
+  sel.innerHTML = '';
+  for (const m of s.models || []) {
+    const o = document.createElement('option');
+    o.value = m.name;
+    o.textContent = `${m.display_name || m.name}${m.is_default ? '（默认）' : ''}${m.multimodal ? ' · 多模态' : ''}`;
+    sel.appendChild(o);
+  }
+  if (!sel.options.length) { const o = document.createElement('option'); o.value = prev; o.textContent = prev; sel.appendChild(o); }
+  sel.value = [...sel.options].some(o => o.value === prev) ? prev : sel.options[0].value;
+  const sm = $('set-model');
+  if (sm) {
+    const keep = sm.value;
+    // 直接克隆节点，避免 innerHTML 往返（options 是 textContent 构造的，本身安全）
+    sm.replaceChildren(...[...sel.options].map((o) => o.cloneNode(true)));
+    sm.value = [...sm.options].some(o => o.value === keep) ? keep : sel.value;
+  }
+  await refreshLogs();
+}
+
+function renderCredentials() {
+  if (!STATUS) return;
+  const s = STATUS;
+  const rows = [
+    ['账号', s.creds?.identity ? `${s.creds.identity.name}（uid ${s.creds.identity.uid}）` : '—'],
+    ['租户', s.creds?.identity?.tenant || '—'],
+    ['JWT 到期', fmt(s.creds?.jwtExp)],
+    ['refresh 到期', fmt(s.creds?.freshExp)],
+    ['上次续期', s.creds?.lastRefreshAt ? fmt(s.creds.lastRefreshAt) : '未续期'],
+    ['最近凭据错误', s.creds?.lastError || '无'],
+  ];
+  $('cred-table').querySelector('tbody').innerHTML = rows
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td class="wrap">${esc(v)}</td></tr>`).join('');
+  const pill = (ok, okText, badText) => ok
+    ? `<span class="pill ok">${okText}</span>` : `<span class="pill warn">${badText}</span>`;
+  // 第三项 true = 该单元格是我们自己拼的固定 HTML（不是外部数据），无需转义
+  const cache = [
+    ['safekey.bin（DPAPI 缓存，可缺）', pill(s.creds?.keyCached, '就绪', '缺失'), true],
+    ['token-cache.json', pill(s.creds?.tokenCached, '就绪', '缺失'), true],
+    ['IPC 连接', s.connected ? '<span class="pill ok">已连接</span>' : '<span class="pill err">断开</span>', true],
+    ['套接字', s.socket ? s.socket.replace('ipc://', '') : '—', false],
+    ['版本', 'v' + s.version, false],
+  ];
+  $('cache-table').querySelector('tbody').innerHTML = cache
+    .map(([k, v, isHtml]) => `<tr><td>${esc(k)}</td><td class="wrap">${isHtml ? v : esc(v)}</td></tr>`).join('');
+}
+
+// ---------- 请求日志 ----------
+// 工具块渲染档位 → 中文（full = 每个工具的完整 schema 都注入提示词）
+const BLOCK_MODE_LABEL = {
+  full: '完整',
+  signature: '签名',
+  'signature-desc40': '签名(描述40)',
+  'signature-nodesc': '签名(无描述)',
+  'names-only': '仅名字',
+};
+
+async function refreshRequests() {
+  const limit = $('reqLimit').value, status = $('reqStatus').value;
+  const d = await getJSON(`/api/requests?limit=${limit}${status ? '&status=' + status : ''}`);
+  if (d.error) return;
+  const body = $('journal').querySelector('tbody');
+  body.innerHTML = '';
+  for (const r of d.rows || []) {
+    const ms = r.ms ? (r.ms / 1000).toFixed(1) + 's' : '—';
+    const tokens = `${num(r.promptTokens)}/${num(r.completionTokens)}`;
+    // 之前只把 status==='error' 当失败，其余（upstream_empty / upstream_error / *_timeout / truncated …）
+    // 全被当成绿色 ok，导致「面板全绿但客户端报错」。这里按状态分档，未知状态一律当失败。
+    const STATUS_LABEL = {
+      ok: ['ok', 'ok'],
+      tool_calls: ['warn', 'tool_calls'],
+      error: ['err', '失败'],
+      upstream_empty: ['err', '上游空结果'],
+      upstream_error: ['err', '上游错误'],
+      upstream_timeout: ['err', '超时'],
+      idle_timeout: ['err', '空闲超时'],
+      timeout: ['err', '超时'],
+      // 代码里已不存在 truncated（旧录制留下的历史行，命中会走默认 err 兜底）
+      truncated_call: ['err', 'CALL 被截断'],
+      truncated_output: ['warn', '打满输出上限'],
+      agent_offline: ['err', '运行时离线'],
+      reasoning_aborted: ['warn', '思考被掐断'],
+      empty_content: ['warn', '只有思考'],
+      undeclared_tool: ['warn', '未声明工具'],
+      client_gone: ['warn', '客户端已断开'],
+    };
+    const stKey = r.status || 'ok';
+    const stDef = STATUS_LABEL[stKey] || ['err', stKey];
+    const statusTip = r.statusDetail || r.error || '';
+    const pill = `<span class="pill ${stDef[0]}"${statusTip ? ' title="' + esc(String(statusTip)) + '"' : ''}>${esc(stDef[1])}</span>`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${new Date(r.ts).toLocaleTimeString('zh-CN')}</td><td>${esc(r.model)}</td><td>${esc(r.kind)}</td>`
+      + `<td>${esc(r.tools ?? '')}</td><td title="工具定义的注入档位：完整 > 签名 > 仅名字">${esc(BLOCK_MODE_LABEL[r.blockMode] || r.blockMode || '')}${r.blockChars ? ' / ' + esc(r.blockChars) + ' 字' : ''}</td>`
+      + `<td>${tokens}</td><td>${ms}</td><td>${pill}</td>`
+      + `<td class="wrap">${esc((r.callNames || []).join(', '))}${(r.error || r.statusDetail) ? '<br><span class="hint">' + esc(String(r.error || r.statusDetail).slice(0, 140)) + '</span>' : ''}</td>`
+      + `<td class="wrap hint">${esc((r.undeclared || []).join(', '))}</td>`;
+    body.appendChild(tr);
+  }
+  $('reqHint').textContent = `共 ${d.total ?? 0} 条记录（内存+JSONL，最多保留 500 条）`;
+}
+
+// ---------- 错误汇总 ----------
+async function refreshErrors() {
+  const d = await getJSON('/api/errors');
+  if (d.error) return;
+  const sig = d.toolSignals || {};
+  $('e-miss').textContent = num(sig.misses || 0);
+  $('e-retry').textContent = num(sig.retries || 0);
+  $('e-calls').textContent = num(sig.calls || 0);
+  const total = sig.totalRequests || 0;
+  $('e-rate').textContent = total ? ((sig.failed / total) * 100).toFixed(1) + '%' : '—';
+  const body = $('errors').querySelector('tbody');
+  body.innerHTML = '';
+  for (const r of d.rows || []) {
+    const tr = document.createElement('tr');
+    const lv = r.level === 'warn' ? '<span class="pill warn">警告</span>' : '<span class="pill err">失败</span>';
+    tr.innerHTML = `<td>${lv}</td><td>${esc(r.count)}</td><td class="wrap">${esc(r.type)}</td><td>${new Date(r.lastTs).toLocaleString('zh-CN')}</td>`
+      + `<td>${esc(r.lastModel)}</td><td class="wrap hint">${esc(r.sample)}</td>`;
+    body.appendChild(tr);
+  }
+  $('errHint').textContent = (d.rows || []).length ? '' : '暂无失败记录';
+}
+
+// ---------- 设置 ----------
+async function loadSettings() {
+  const d = await getJSON('/api/settings');
+  if (d.error) return;
+  $('set-ban').value = d.native_ban ? 'true' : 'false';
+  $('set-depth').value = d.tool_schema_depth;
+  $('set-budget').value = d.tool_block_budget;
+  $('set-ws').value = d.workspace_folder || '';
+  $('set-agent').value = d.agent_type || 'chat';
+  if ($('set-image')) $('set-image').value = d.image_passthrough === false ? 'false' : 'true';
+  if (d.has_password === false) $('saveHint').textContent = '当前未设置口令';
+}
+
+$('btnSave').addEventListener('click', async () => {
+  const body = {
+    native_ban: $('set-ban').value === 'true',
+    tool_schema_depth: Number($('set-depth').value),
+    tool_block_budget: Number($('set-budget').value),
+    workspace_folder: $('set-ws').value,
+    agent_type: $('set-agent').value,
+    image_passthrough: $('set-image')?.value === 'true',
+    default_model: $('set-model')?.value || '',
+  };
+  const pwd = $('set-pwd').value;
+  if (pwd) body.new_password = pwd;
+  const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (r.ok && j.ok) {
+    $('saveHint').textContent = '已保存: ' + (j.applied || []).join(', ');
+    $('set-pwd').value = '';
+    await refreshStatus();
+  } else {
+    $('saveHint').textContent = '保存失败: ' + (j?.error?.message || r.status);
+  }
+});
+
+// ---------- 日志 ----------
+async function refreshLogs() {
+  const d = await getJSON('/api/logs');
+  if (d.error) return;
+  $('logs').textContent = (d.lines || []).join('\n');
+}
+
+// ---------- 续期 ----------
+async function renew(hintEl) {
+  hintEl.textContent = '续期中…';
+  const r = await fetch('/api/creds/refresh', { method: 'POST' });
+  const j = await r.json().catch(() => ({}));
+  hintEl.textContent = r.ok && j.ok !== false ? '已续期，新到期 ' + fmt(j.creds?.jwtExp) : '续期失败: ' + (j?.error?.message || r.status);
+  await refreshStatus();
+}
+$('btnRenew').addEventListener('click', () => renew($('c-hint')));
+$('btnRenew2').addEventListener('click', () => renew($('renewHint')));
+
+// ---------- Trae 网页登录 ----------
+let traeLoginTimer = null;
+function traeLoginSetHint(text, isErr) {
+  const el = $('traeLoginHint');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isErr ? '#ff8080' : '';
+}
+function traeLoginRender(st, qr) {
+  const wrap = $('traeLoginQrWrap');
+  const img = $('traeLoginQr');
+  if (qr && img) { img.src = qr; wrap.style.display = 'block'; }
+  if (!qr && wrap) wrap.style.display = 'none';
+  if (!st) return;
+  const map = {
+    idle: '未开始', starting: '正在启动浏览器…', waiting_scan: '等待扫码…',
+    waiting_page: '请在页面上完成登录', authenticated_pending: '已收到登录回调，等站点写入登录态…', authenticated: '已登录，正在换取凭据…',
+    done: '✅ 登录成功，凭据已写入', error: '❌ ' + (st.error || '失败'),
+  };
+  traeLoginSetHint(map[st.state] || st.state, st.state === 'error');
+  if (st.state === 'done' || st.state === 'error' || st.state === 'idle') {
+    if (traeLoginTimer) { clearInterval(traeLoginTimer); traeLoginTimer = null; }
+    if (st.state === 'done') { traeScreenOn(false); setTimeout(() => location.reload(), 1600); }
+  }
+}
+async function traeLoginPoll() {
+  try {
+    const r = await fetch('/api/trae-login/state');
+    const j = await r.json();
+    traeLoginRender(j.state, j.qr);
+  } catch (e) { traeLoginSetHint('轮询失败: ' + e.message, true); }
+}
+let traeScreenTimer = null;
+function traeScreenOn(on) {
+  const img = $('traeLoginScreen');
+  if (!img) return;
+  if (on) {
+    if (traeScreenTimer) return;
+    const tick = () => { img.src = '/api/trae-login/screen?t=' + Date.now(); };
+    tick();
+    traeScreenTimer = setInterval(tick, 1500);
+  } else if (traeScreenTimer) {
+    clearInterval(traeScreenTimer); traeScreenTimer = null;
+  }
+}
+function traeAction(text, isErr) {
+  const el = $('traeActionHint');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isErr ? '#ff8080' : '';
+}
+const _bp = $('btnTraePhone');
+if (_bp) _bp.addEventListener('click', async () => {
+  const phone = ($('traePhone').value || '').trim();
+  if (!/^\d{6,15}$/.test(phone)) { traeAction('手机号格式不对', true); return; }
+  traeAction('正在提交手机号…');
+  try {
+    const r = await fetch('/api/trae-login/phone', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
+    const j = await r.json();
+    traeAction(j.ok ? ('已提交' + (j.result && j.result.clicked ? '，并点击了「' + j.result.clicked + '」' : '') + '；请查收短信') : ('失败: ' + (j.error || '')), !j.ok);
+    traeScreenOn(true);
+  } catch (e) { traeAction('失败: ' + e.message, true); }
+});
+const _bc2 = $('btnTraeCode');
+if (_bc2) _bc2.addEventListener('click', async () => {
+  const code = ($('traeCode').value || '').trim();
+  if (!/^\d{4,8}$/.test(code)) { traeAction('验证码格式不对', true); return; }
+  traeAction('正在提交验证码…');
+  try {
+    const r = await fetch('/api/trae-login/code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+    const j = await r.json();
+    traeAction(j.ok ? '已提交，等待站点登录…' : ('失败: ' + (j.error || '')), !j.ok);
+    traeScreenOn(true);
+    if (!traeLoginTimer) traeLoginTimer = setInterval(traeLoginPoll, 2000);
+  } catch (e) { traeAction('失败: ' + e.message, true); }
+});
+const _bl = $('btnTraeLogin');
+if (_bl) _bl.addEventListener('click', async () => {
+  traeLoginSetHint('正在启动登录用浏览器（首次约 40–60 秒，请稍候）…');
+  try {
+    const r = await fetch('/api/trae-login/start', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) { traeLoginSetHint('启动失败: ' + (j.error || ''), true); return; }
+    traeLoginRender(j.state, j.qr);
+    if (traeLoginTimer) clearInterval(traeLoginTimer);
+    traeLoginTimer = setInterval(traeLoginPoll, 2000);
+  } catch (e) { traeLoginSetHint('启动失败: ' + e.message, true); }
+});
+const _bc = $('btnTraeLoginCancel');
+if (_bc) _bc.addEventListener('click', async () => {
+  if (traeLoginTimer) { clearInterval(traeLoginTimer); traeLoginTimer = null; }
+  await fetch('/api/trae-login/cancel', { method: 'POST' }).catch(() => {});
+  traeLoginRender({ state: 'idle' }, null);
+});
+
+// ---------- 试聊 ----------
+function sendSse(text, onEvent) {
+  for (const line of String(text).split('\n')) {
+    if (!line.startsWith('data: ')) continue;
+    const p = line.slice(6).trim();
+    if (p === '[DONE]') continue;
+    try { onEvent(JSON.parse(p)); } catch {}
+  }
+}
+$('btnClear').addEventListener('click', () => {
+  $('think').hidden = true; $('think').textContent = '';
+  $('content').textContent = '等待提问…'; $('content').style.color = 'var(--muted)';
+  $('meta').textContent = ''; $('sendHint').textContent = '';
+});
+$('btnSend').addEventListener('click', async () => {
+  const prompt = $('prompt').value.trim();
+  if (!prompt) return;
+  const model = $('model').value;
+  $('btnSend').disabled = true; $('sendHint').textContent = '请求中…';
+  $('think').textContent = ''; $('think').hidden = true;
+  $('content').textContent = ''; $('content').style.color = 'var(--fg)';
+  $('meta').textContent = '';
+  try {
+    const r = await fetch('/api/playground', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, prompt }) });
+    if (r.status === 401) { location.href = '/login'; return; }
+    const text = await r.text();
+    let first = null, chars = 0, status = '', ms = 0, usage = {};
+    sendSse(text, (ev) => {
+      if (ev.type === 'thinking') { $('think').hidden = false; $('think').textContent += ev.text; }
+      else if (ev.type === 'content') { if (first == null) first = Date.now(); chars += ev.text.length; $('content').textContent += ev.text; }
+      else if (ev.type === 'usage') { usage = ev.usage || {}; }
+      else if (ev.type === 'done') { status = ev.status; ms = ev.ms; }
+      else if (ev.type === 'error') { $('content').textContent = '错误: ' + ev.message; }
+    });
+    if ($('think').textContent) $('think').hidden = false;
+    $('meta').textContent = `总 ${ms} ms · ${chars} 字 · 状态 ${status || '—'} · tokens ${usage.prompt_tokens ?? '—'}/${usage.completion_tokens ?? '—'}（思考 ${usage.reasoning_tokens ?? 0}）`;
+  } catch (e) {
+    $('content').textContent = '请求失败: ' + e.message;
+  }
+  $('btnSend').disabled = false; $('sendHint').textContent = '';
+});
+$('prompt').addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); $('btnSend').click(); }
+});
+
+// ---------- 顶栏 ----------
+$('btnRefresh').addEventListener('click', async () => {
+  const btn = $('btnRefresh');
+  const old = btn.textContent;
+  btn.textContent = '刷新中…'; btn.disabled = true;
+  try { await refreshStatus(); btn.textContent = '已刷新 ' + new Date().toLocaleTimeString('zh-CN'); }
+  catch (e) { btn.textContent = '刷新失败'; if ($('c-hint')) $('c-hint').textContent = '状态刷新失败: ' + e.message; }
+  finally { setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 1500); }
+});
+$('btnModels').addEventListener('click', async () => {
+  $('btnModels').disabled = true; $('btnModels').textContent = '刷新中…';
+  const r = await fetch('/api/models/refresh', { method: 'POST' });
+  const j = await r.json().catch(() => ({}));
+  $('btnModels').disabled = false; $('btnModels').textContent = '刷新模型目录';
+  $('modelHint').textContent = r.ok ? ('已刷新：' + j.count + ' 个模型') : ('刷新失败: ' + ((j && j.error && j.error.message) || r.status));
+  await refreshStatus();
+});
+$('btnLogout').addEventListener('click', async () => {
+  await fetch('/api/logout', { method: 'POST' });
+  location.href = '/login';
+});
+$('btnReqRefresh').addEventListener('click', refreshRequests);
+$('reqLimit').addEventListener('change', refreshRequests);
+$('reqStatus').addEventListener('change', refreshRequests);
+
+refreshStatus();
+setInterval(() => { refreshStatus(); }, 15000);
+</script>
+</body>
+</html>
+
+
+
+
+

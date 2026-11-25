@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>trae2api · 登录</title>
+<style>
+  :root { --bg:#0e1016; --card:#171b24; --line:#252b38; --fg:#e6e9f0; --muted:#8b93a7; --acc:#5b8cff; --err:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         background:radial-gradient(1200px 600px at 20% -10%, #1b2233 0%, var(--bg) 60%);
+         color:var(--fg); font:15px/1.6 -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .box { width:min(380px,92vw); background:var(--card); border:1px solid var(--line); border-radius:14px; padding:28px 26px 22px; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+  h1 { margin:0 0 4px; font-size:19px; letter-spacing:.3px; }
+  h1 b { color:var(--acc); font-weight:700; }
+  p.sub { margin:0 0 20px; color:var(--muted); font-size:13px; }
+  label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; letter-spacing:.4px; }
+  input { width:100%; padding:11px 12px; border-radius:9px; border:1px solid var(--line); background:#0f131b; color:var(--fg); font-size:15px; }
+  input:focus { outline:none; border-color:var(--acc); }
+  button { margin-top:16px; width:100%; padding:11px; border:0; border-radius:9px; background:var(--acc); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:default; }
+  .err { margin-top:12px; color:var(--err); font-size:13px; min-height:18px; }
+</style>
+</head>
+<body>
+<form class="box" id="form">
+  <h1>trae<span>2api</span></h1>
+  <p class="sub">Trae 通道 OpenAI 兼容网关 · 需要口令</p>
+  <label for="pwd">访问口令</label>
+  <input id="pwd" type="password" autocomplete="current-password" autofocus placeholder="输入口令后回车">
+  <button id="btn" type="submit">进入面板</button>
+  <div class="err" id="err"></div>
+</form>
+<script>
+const f = document.getElementById('form'), pwd = document.getElementById('pwd'),
+      btn = document.getElementById('btn'), err = document.getElementById('err');
+// 登录后跳回原页面（远程访问 / 深链接都走这里）
+const rawNext = new URLSearchParams(location.search).get('next') || '/';
+const next = (rawNext.startsWith('/') && !rawNext.startsWith('//')) ? rawNext : '/';
+if (next !== '/') {
+  const tip = document.createElement('p');
+  tip.className = 'sub';
+  tip.style.marginTop = '8px';
+  tip.textContent = '登录后将返回：' + next;
+  f.insertBefore(tip, err);
+}
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  err.textContent = ''; btn.disabled = true; btn.textContent = '验证中…';
+  try {
+    const r = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password: pwd.value, next }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.ok) { location.href = (j.next || next); return; }
+    err.textContent = j?.error?.message || ('登录失败（HTTP ' + r.status + '）');
+  } catch (ex) { err.textContent = '请求失败: ' + ex.message; }
+  btn.disabled = false; btn.textContent = '进入面板'; pwd.select();
+});
+</script>
+</body>
+</html>
